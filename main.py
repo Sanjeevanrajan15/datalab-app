@@ -114,5 +114,17 @@ def profile():
     # User is not logged in redirect to login page
     return redirect(url_for('login'))
 
+@app.route('/pythonlogin/upload', methods=['GET', 'POST'])
+def upload():     # Check if the user is logged in
+    if 'loggedin' in session:
+        # We need all the account info for the user so we can display it on the profile page
+        with connection.cursor() as cursor:
+            cursor.execute('SELECT * FROM accounts WHERE id = %s', (session['id'],))
+            account = cursor.fetchone()
+            # Show the profile page with account info
+            return render_template('upload.html', account=account)
+    # User is not logged in redirect to login page
+    return redirect(url_for('login'))  
+
 if __name__ == "__main__":
     app.run(debug=True)
