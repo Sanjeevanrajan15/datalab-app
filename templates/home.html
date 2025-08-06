@@ -1,0 +1,21 @@
+{% extends 'layout.html' %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<h2>Home Page</h2>
+<p>Welcome {{ username }} !</p>
+<p>This application is a secure, user-friendly web platform that allows registered users to log in and upload CSV files for data processing. 
+    Built using Flask and MySQL, the app features a login and session management system to ensure only authenticated users can access its core functionality. 
+    Once logged in, users can upload CSV files, which are then cleaned and processed for analysis or visualization. 
+    The goal is to provide a simple but powerful interface for users to manage and interact with their data, 
+    while ensuring scalability for future enhancements, such as integration with Azure databases or advanced analytics tools.</p>
+<p>The application begins with a user login system where credentials are verified against a MySQL database. 
+   Once authenticated, users are granted access to the main dashboard where they can upload CSV files. 
+   Upon upload, the file is securely saved on the server and processed using pandas. 
+   The system automatically cleans the data by removing empty rows, standardizing column names, and trimming unnecessary whitespace. 
+   A preview of the cleaned data is then displayed in a structured, styled HTML table, giving users a quick insight into their dataset. 
+   Additional features such as labeling documents, storing them in Azure, and extended user profiles can be added to enhance the functionality further. 
+   The app uses Flask sessions to manage user state, ensuring personalized and secure access throughout the experience.</p>
+
+   {% endblock %}
