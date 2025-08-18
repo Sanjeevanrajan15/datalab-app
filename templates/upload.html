@@ -3,28 +3,51 @@
 {% block title %}Profile{% endblock %}
 
 {% block content %}
-<h2>Upload Page</h2>
-<div>
-    <p>Your account details are below:</p>
-    <table>
-        <tr>
-            <td>Username:</td>
-            <td>{{ account['username'] }}</td>
-        </tr>
-        <tr>
-            <td>Password:</td>
-            <td>******</td>
-        </tr>
-        <tr>
-            <td>Email:</td>
-            <td>{{ account['email'] }}</td>
-        </tr>
-    </table>
-    <p>
-        <form action="">
-        <input type="file" id="myFile" name="filename">
-        <input type="submit">
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Upload & Display CSV</title>
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        .table-container {
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Upload a CSV File</h2>
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".csv" required>
+        <button type="submit">Upload</button>
     </form>
-    <p>
-</div>
+
+    {% if tables %}
+    <div class="table-container" id="tableSection">
+        <h3>Cleaned CSV Data:</h3>
+        {% for table in tables %}
+            {{ table|safe }}
+        {% endfor %}
+
+        <!-- (optional) show file name -->
+        <p><strong>Cleaned File:</strong> {{ cleaned_filename }}</p>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const tableSection = document.getElementById("tableSection");
+            if (tableSection) {
+                tableSection.scrollIntoView({ behavior: "smooth" });
+            }
+        });
+    </script>
+    {% endif %}
+
+</body>
+</html>
+
+
 {% endblock %}

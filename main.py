@@ -1,6 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 import pymysql
 import re, hashlib
+from werkzeug.utils import secure_filename
+import os
+import pandas as pd
 
 app = Flask(__name__)
 
@@ -16,6 +19,33 @@ connection = pymysql.connect(
     database='pythonlogin',
     cursorclass=pymysql.cursors.DictCursor
 )
+
+# CSV folder paths
+ORIGINAL_FOLDER = 'uploads/original'
+CLEANED_FOLDER = 'uploads/cleaned'
+
+# Make folders if they don't exist
+os.makedirs(ORIGINAL_FOLDER, exist_ok=True)
+os.makedirs(CLEANED_FOLDER, exist_ok=True)
+
+# Allow only CSV files
+ALLOWED_EXTENSIONS = {'csv'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# Data cleaning function
+def clean_csv(original_path):
+    df = pd.read_csv(original_path)
+    df.columns = [col.strip().lower().replace(" ", "_") for col in df.columns]
+    df.drop_duplicates(inplace=True)
+    df.dropna(how='all', inplace=True)
+
+    cleaned_filename = "cleaned_" + os.path.basename(original_path)
+    cleaned_path = os.path.join(CLEANED_FOLDER, cleaned_filename)
+    df.to_csv(cleaned_path, index=False)
+
+    return cleaned_filename, df
+
 
 @app.route('/pythonlogin/', methods=['GET', 'POST'])
 def login():
@@ -116,15 +146,23 @@ def profile():
 
 @app.route('/pythonlogin/upload', methods=['GET', 'POST'])
 def upload():     # Check if the user is logged in
-    if 'loggedin' in session:
-        # We need all the account info for the user so we can display it on the profile page
-        with connection.cursor() as cursor:
-            cursor.execute('SELECT * FROM accounts WHERE id = %s', (session['id'],))
-            account = cursor.fetchone()
-            # Show the profile page with account info
-            return render_template('upload.html', account=account)
-    # User is not logged in redirect to login page
-    return redirect(url_for('login'))  
+    if request.method == 'POST':
+        file = request.files.get('file')
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            original_path = os.path.join(ORIGINAL_FOLDER, filename)
+            file.save(original_path)
+
+            cleaned_filename, df_cleaned = clean_csv(original_path)
+
+            return render_template(
+                'upload.html',
+                tables=[df_cleaned.to_html(classes='table table-bordered')],
+                title='Cleaned Data',
+                cleaned_filename=cleaned_filename
+            )
+
+    return render_template('upload.html', tables=None)
 
 if __name__ == "__main__":
     app.run(debug=True)
