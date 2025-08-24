@@ -28,6 +28,9 @@ CLEANED_FOLDER = 'uploads/cleaned'
 os.makedirs(ORIGINAL_FOLDER, exist_ok=True)
 os.makedirs(CLEANED_FOLDER, exist_ok=True)
 
+app.config['ORIGINAL_FOLDER'] = ORIGINAL_FOLDER
+app.config['CLEANED_FOLDER'] = CLEANED_FOLDER
+
 # Allow only CSV files
 ALLOWED_EXTENSIONS = {'csv'}
 def allowed_file(filename):
@@ -145,24 +148,54 @@ def profile():
     return redirect(url_for('login'))
 
 @app.route('/pythonlogin/upload', methods=['GET', 'POST'])
-def upload():     # Check if the user is logged in
+def upload():
+    if 'loggedin' not in session:
+        return redirect(url_for('login'))
+
+    msg = ''
+    uploads = []
+    tables = []
+    cleaned_filename = ''
+
     if request.method == 'POST':
-        file = request.files.get('file')
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            original_path = os.path.join(ORIGINAL_FOLDER, filename)
-            file.save(original_path)
+        uploaded_file = request.files.get('file')
+        
+        if uploaded_file and uploaded_file.filename.endswith('.csv'):
+            filename = secure_filename(uploaded_file.filename)
+            file_path = os.path.join(app.config['ORIGINAL_FOLDER'], filename)
+            uploaded_file.save(file_path)
 
-            cleaned_filename, df_cleaned = clean_csv(original_path)
+            try:
+                # Link file to user in DB
+                with connection.cursor() as cursor:
+                    sql = """INSERT INTO uploads (user_id, filename, upload_path)
+                             VALUES (%s, %s, %s)"""
+                    cursor.execute(sql, (session['id'], filename, file_path))
+                    connection.commit()
 
-            return render_template(
-                'upload.html',
-                tables=[df_cleaned.to_html(classes='table table-bordered')],
-                title='Cleaned Data',
-                cleaned_filename=cleaned_filename
-            )
+                # Clean and display CSV
+                cleaned_filename, df = clean_csv(file_path)
+                tables = [df.to_html(classes='table table-bordered', index=False)]
+                msg = 'File uploaded, cleaned, and linked to your account!'
+            except Exception as e:
+                connection.rollback()
+                msg = f"Upload failed: {str(e)}"
+        else:
+            msg = 'Invalid file type. Only CSVs are allowed.'
 
-    return render_template('upload.html', tables=None)
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT filename, upload_time 
+                FROM uploads 
+                WHERE user_id = %s 
+                ORDER BY upload_time DESC
+            """, (session['id'],))
+            uploads = cursor.fetchall()
+    except Exception as e:
+        msg += f" | Failed to fetch uploads: {str(e)}"
+
+    return render_template('upload.html', msg=msg, uploads=uploads, tables=tables, cleaned_filename=cleaned_filename)
 
 if __name__ == "__main__":
     app.run(debug=True)
